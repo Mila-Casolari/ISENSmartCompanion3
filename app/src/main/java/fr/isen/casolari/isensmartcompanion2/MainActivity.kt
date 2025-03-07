@@ -196,6 +196,130 @@ fun generateAIResponse(input: String): String {
 @Composable
 fun AssistantScreen() {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var userInput by remember { mutableStateOf(TextFieldValue("")) }
+    var messages by remember { mutableStateOf(listOf<Message>()) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFAF8FC)), // Couleur de fond légèrement grisâtre
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(60.dp))
+
+            //  Logo
+            Image(
+                painter = painterResource(id = R.drawable.logoisen), // Assure-toi que ton logo est dans res/drawable
+                contentDescription = "Logo ISEN",
+                modifier = Modifier.size(100.dp) // Taille du logo
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Titre
+            Text(
+                text = "ISEN",
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFB71C1C), // Rouge foncé
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Sous-titre
+            Text(
+                text = "Smart Companion",
+                fontSize = 18.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Affichage des messages
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                reverseLayout = true
+            ) {
+                items(messages.reversed()) { message ->
+                    MessageBubble(message)
+                }
+            }
+
+            // Champ de saisie en bas de l'écran
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .background(Color(0xFFEDEDED), shape = RoundedCornerShape(50.dp)) // Fond gris clair arrondi
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = userInput,
+                    onValueChange = { userInput = it },
+                    placeholder = { Text("Posez votre question...") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.Transparent),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Bouton circulaire avec icône
+                IconButton(
+                    onClick = {
+                        if (userInput.text.isNotBlank()) {
+                            val question = userInput.text
+                            userInput = TextFieldValue("") // Réinitialiser le champ après envoi
+                            messages = messages + Message(question, isUser = true)
+
+                            coroutineScope.launch {
+                                try {
+                                    val aiResponse = GeminiAI.analyzeText(question)
+                                    messages = messages + Message(aiResponse, isUser = false)
+                                } catch (e: Exception) {
+                                    messages = messages + Message("Erreur : ${e.message}", isUser = false)
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFB71C1C)) // Rouge foncé
+                ) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_media_next), // Icône de flèche
+                        contentDescription = "Envoyer",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+/*@Composable
+fun AssistantScreen() {
+    val context = LocalContext.current
     val apiKey = BuildConfig.GEMINI_API_KEY // ✅ Récupération sécurisée de la clé API
     Log.d("AssistantScreen", "Clé API Gemini récupérée: $apiKey")
     val model = GenerativeModel(apiKey, "gemini-1.5-flash") // ✅ Utilisation du modèle Gemini 1.5 Flash
@@ -270,7 +394,7 @@ fun AssistantScreen() {
             Text(text = "Envoyer")
         }
     }
-}
+}*/
 
 /*@Composable
 fun MessageBubble(message: Message) {
@@ -295,19 +419,23 @@ fun MessageBubble(message: Message) {
 }*/
 
 @Composable
-fun MessageBubble(message: Pair<String, String>) {
+fun MessageBubble(message: Message) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(text = "👤 ${message.first}", fontSize = 18.sp, modifier = Modifier.padding(4.dp))
         Text(
-            text = "🤖 ${message.second}",
+            text = message.text,
             fontSize = 16.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(4.dp)
+            color = Color.White,
+            modifier = Modifier
+                .background(
+                    if (message.isUser) Color(0xFFB71C1C) else Color(0xFF757575),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(12.dp)
         )
     }
 }
